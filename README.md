@@ -16,6 +16,5 @@ Candidate Recommendation System for IT hiring, helping HR quickly find top match
 
 
 ## License
-Licensed under the Apache License, V
-ersion 2.0 – see the [LICENSE](LICENSE) file for details.
+Licensed under the Apache License, Version 2.0 – see the [LICENSE](LICENSE) file for details.
 
