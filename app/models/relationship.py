@@ -55,53 +55,11 @@ class Studied(WeightEdge):
         r"(md|jd|do|dds|dmd|pharmd|dvm|engd|dba|edd|drph)\b": "professional_doctorate",
     }
     
-    _gpa = FloatProperty()
-    _degree = StringProperty()
-    _fromDate = DateTimeProperty(default_now=True)
-    _toDate = DateTimeProperty(default_now=True)
+    gpa = FloatProperty()
+    degree = StringProperty()
+    fromDate = DateTimeProperty(default_now=True)
+    toDate = DateTimeProperty(default_now=True)
     
-    @property
-    def GPA(self) -> float:
-        return self._gpa
-    
-    @GPA.setter
-    def GPA(self, value : typing.Optional[float]) -> None:
-        
-        if value > 4.0 or value < 0.0:
-            self._gpa = 0.0
-            raise ValueError("Invalid GPA. Should in range 0.0 to 4.0 !")
-        
-        self._gpa = (value if value else 0.0)
-        
-    @property
-    def degree(self) -> str:
-        return self._degree
-    
-    @degree.setter
-    def degree(self, deg : typing.Optional[str]) -> None:
-        if deg is None:
-            self._degree = "unknown"
-        self._degree = deg
-        
-    @property
-    def fromDate(self) -> datetime:
-        return self._fromDate
-    
-    @fromDate.setter
-    def fromDate(self, time : datetime | None) -> None:
-        if time is None:
-            return
-        self._fromDate = time
-        
-    @property
-    def toDate(self) -> datetime:
-        return self._toDate
-    
-    @toDate.setter
-    def toDate(self, time : datetime | None) -> None:
-        if time is None:
-            return
-        self._toDate = time
         
     def degree_to_score(self, deg : str | None = None) -> float: 
         if deg is None:
