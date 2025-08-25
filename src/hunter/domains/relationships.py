@@ -84,3 +84,24 @@ class HasSkill(WeightEdge):
 
 class WorkOn(WeightEdge):
     pass
+
+
+# Self-relationship edges for feature similarity
+class SimilarSkill(WeightEdge):
+    """
+    Self-relationship between Skill nodes, e.g., (Skill)-[:SIMILAR_SKILL {weight, cost}]->(Skill).
+    Use `set_weight(similarity)` where similarity ∈ [0,1].
+    """
+    pass
+
+class SimilarLanguage(WeightEdge):
+    """
+    Self-relationship between Language nodes, e.g., (Language)-[:SIMILAR_LANGUAGE {weight, cost}]->(Language).
+    """
+    pass
+
+class SimilarJobTitle(WeightEdge):
+    """
+    Self-relationship between JobTitle nodes, e.g., (JobTitle)-[:SIMILAR_TITLE {weight, cost}]->(JobTitle).
+    """
+    pass
