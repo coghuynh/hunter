@@ -16,7 +16,7 @@ services:
       - neo4j_import:/var/lib/neo4j/import
       - neo4j_plugins:/plugins
     env_file:
-      - .env  
+      - .env.app
 
 volumes:
   neo4j_data:

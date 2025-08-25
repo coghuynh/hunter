@@ -4,7 +4,7 @@ Candidate Recommendation System for IT hiring, helping HR quickly find top match
 
 ## Overview
 
-<pre lang="markdown">
+<!-- <pre lang="markdown"> -->
 <!-- 
 ## Project Structure
 

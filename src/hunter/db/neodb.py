@@ -1,5 +1,5 @@
 from neomodel import (
-    config, db
+    config
 )
 
 from hunter.config import (
@@ -8,6 +8,6 @@ from hunter.config import (
 
 config.DATABASE_URL = f"bolt://{NEO4J_USER}:{NEO4J_PASSWORD}@{NEO4J_URI}"
 
-def run_cyper(query: str, params: dict = None): 
-    results, meta = db.cypher_query(query, params)
-    return results, meta
+from neomodel import db
+
+db_instance = db
