@@ -6,15 +6,21 @@ QUERIES = [
     # ---------- UNIQUE by uid ----------
     "CREATE CONSTRAINT candidate_uid IF NOT EXISTS "
     "FOR (n:Candidate) REQUIRE n.uid IS UNIQUE",
-
-    "CREATE CONSTRAINT education_uid IF NOT EXISTS "
-    "FOR (n:Education) REQUIRE n.uid IS UNIQUE",
-
+    
     "CREATE CONSTRAINT jobtitle_uid IF NOT EXISTS "
     "FOR (n:JobTitle) REQUIRE n.uid IS UNIQUE",
 
     "CREATE CONSTRAINT language_uid IF NOT EXISTS "
     "FOR (n:Language) REQUIRE n.uid IS UNIQUE",
+        
+    "CREATE CONSTRAINT university_uid IF NOT EXISTS "
+    "FOR (n:University) REQUIRE n.uid IS UNIQUE",
+
+    "CREATE CONSTRAINT major_uid IF NOT EXISTS "
+    "FOR (n:Major) REQUIRE n.uid IS UNIQUE",
+
+    # "CREATE CONSTRAINT degree_uid IF NOT EXISTS "
+    # "FOR (n:Degree) REQUIRE n.uid IS UNIQUE",
 
     "CREATE CONSTRAINT skill_uid IF NOT EXISTS "
     "FOR (n:Skill) REQUIRE n.uid IS UNIQUE",
@@ -31,6 +37,15 @@ QUERIES = [
 
     "CREATE CONSTRAINT jobtitle_title_unique IF NOT EXISTS "
     "FOR (n:JobTitle) REQUIRE n.title IS UNIQUE",
+    
+    "CREATE CONSTRAINT university_name_unique IF NOT EXISTS "
+    "FOR (n:University) REQUIRE n.name IS UNIQUE",
+
+    "CREATE CONSTRAINT major_name_unique IF NOT EXISTS "
+    "FOR (n:Major) REQUIRE n.name IS UNIQUE",
+
+    # "CREATE CONSTRAINT degree_name_unique IF NOT EXISTS "
+    # "FOR (n:Degree) REQUIRE n.name IS UNIQUE",
 
     # ---------- INDEX for lookups ----------
     "CREATE INDEX candidate_name IF NOT EXISTS "
@@ -39,14 +54,12 @@ QUERIES = [
     "CREATE INDEX candidate_location IF NOT EXISTS "
     "FOR (n:Candidate) ON (n.location)",
 
-    "CREATE INDEX education_school IF NOT EXISTS "
-    "FOR (n:Education) ON (n.school)",
-
-    "CREATE INDEX education_major IF NOT EXISTS "
-    "FOR (n:Education) ON (n.major)",
-
     "CREATE INDEX project_name IF NOT EXISTS "
     "FOR (n:Project) ON (n.name)",
+    
+    "CREATE INDEX university_name_idx IF NOT EXISTS FOR (n:University) ON (n.name)",
+    "CREATE INDEX major_name_idx IF NOT EXISTS FOR (n:Major) ON (n.name)",
+    # "CREATE INDEX degree_name_idx IF NOT EXISTS FOR (n:Degree) ON (n.name)",
 
     # ---------- RELATIONSHIP PROPERTY EXISTENCE ----------
     # WeightEdge & UnweightEdge in your schema always set r.cost

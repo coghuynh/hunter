@@ -85,6 +85,8 @@ class HasSkill(WeightEdge):
 class WorkOn(WeightEdge):
     pass
 
+class LearnOn(WeightEdge):
+    pass 
 
 # Self-relationship edges for feature similarity
 class SimilarSkill(WeightEdge):
@@ -105,3 +107,4 @@ class SimilarJobTitle(WeightEdge):
     Self-relationship between JobTitle nodes, e.g., (JobTitle)-[:SIMILAR_TITLE {weight, cost}]->(JobTitle).
     """
     pass
+

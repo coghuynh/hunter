@@ -3,7 +3,7 @@ from neomodel import (
     DateTimeProperty, UniqueIdProperty, RelationshipTo, RelationshipFrom
 )
 
-from domains.relationships import *
+from hunter.domains.relationships import *
 
 class Candidate(StructuredNode):
     uid = UniqueIdProperty()
@@ -18,13 +18,18 @@ class Candidate(StructuredNode):
     skills    = RelationshipFrom('Skill', 'HAS_SKILL', model=HasSkill)
     projects  = RelationshipFrom('Project', 'WORK_ON', model=WorkOn)
 
-class Education(StructuredNode):
-    uid = UniqueIdProperty()
-    school = StringProperty(index=True)
-    major = StringProperty(index=True, required=False)
-    country = StringProperty(required=False)
 
-    candidates = RelationshipTo(Candidate, 'STUDIED', model=Studied)
+class Major(StructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    
+    candidates = RelationshipTo(Candidate, "LEARN_ON", model=LearnOn)
+    
+class University(StructuredNode):
+    uid = UniqueIdProperty()
+    name = StringProperty(unique_index=True)
+    
+    cadidates = RelationshipTo(Candidate, "STUDIED", model=Studied)
 
 class JobTitle(StructuredNode):
     uid = UniqueIdProperty()
