@@ -11,8 +11,6 @@ services:
     env_file:
       - .env.app      # chứa NEO4J_AUTH=neo4j/yourStrongPass  (hoặc NEO4J_AUTH=none)
     environment:
-      # Ví dụ bật APOC (tùy nhu cầu, cho Neo4j 5.x dùng NEO4J_PLUGINS)
-      # - NEO4J_PLUGINS=["apoc"]
       - NEO4J_server_memory_pagecache_size=1G
     volumes:
       - neo4j_data:/data
@@ -26,8 +24,7 @@ services:
       retries: 10
 
   app:
-    # Nếu đã build sẵn image local "hunter:1.0" thì giữ nguyên; 
-    # nếu muốn build từ Dockerfile trong thư mục hiện tại, dùng:
+
     # build: .
     image: hunter:1.0
     container_name: hunter_app
@@ -35,10 +32,10 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env.hunter           # biến môi trường app (DB_URL, SECRET, ...)
+      - .env.hunter           
     depends_on:
       neo4j:
-        condition: service_healthy   # chờ neo4j OK rồi app mới start
+        condition: service_healthy 
 
 volumes:
   neo4j_data:
