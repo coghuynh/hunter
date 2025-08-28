@@ -2,21 +2,43 @@ version: "3.9"
 
 services:
   neo4j:
-    image: neo4j:5.20 # use the latest stable version
+    image: neo4j:5.20
     container_name: neo4j
     restart: unless-stopped
     ports:
-      - "7474:7474" 
-      - "7687:7687" 
+      - "7474:7474"   # HTTP
+      - "7687:7687"   # Bolt
+    env_file:
+      - .env.app      # chứa NEO4J_AUTH=neo4j/yourStrongPass  (hoặc NEO4J_AUTH=none)
     environment:
-      - NEO4J_AUTH=${NEO4J_AUTH} 
+      # Ví dụ bật APOC (tùy nhu cầu, cho Neo4j 5.x dùng NEO4J_PLUGINS)
+      # - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_server_memory_pagecache_size=1G
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
       - neo4j_import:/var/lib/neo4j/import
       - neo4j_plugins:/plugins
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    # Nếu đã build sẵn image local "hunter:1.0" thì giữ nguyên; 
+    # nếu muốn build từ Dockerfile trong thư mục hiện tại, dùng:
+    # build: .
+    image: hunter:1.0
+    container_name: hunter_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
     env_file:
-      - .env.app
+      - .env.hunter           # biến môi trường app (DB_URL, SECRET, ...)
+    depends_on:
+      neo4j:
+        condition: service_healthy   # chờ neo4j OK rồi app mới start
 
 volumes:
   neo4j_data:
