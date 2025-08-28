@@ -14,7 +14,7 @@ class CandidateRepository:
         """
         Create or update a Candidate.
         - If uid is provided: MERGE by uid, set/refresh name/location.
-        - Otherwise: MERGE by (name) as a practical natural key and assign uid on create.
+        - Otherwise: CREATE a new Candidate with a fresh uid (name is NOT unique).
         Returns the candidate uid.
         """
         name = _strip_or_none(name)
@@ -37,12 +37,13 @@ class CandidateRepository:
             return rows[0][0]
         else:
             q = """
-            MERGE (c:Candidate {name: $name})
-            ON CREATE SET c.uid = randomUUID(),
-                          c.location = $location,
-                          c.created_at = datetime()
-            ON MATCH  SET c.location = coalesce($location, c.location),
-                          c.updated_at = datetime()
+            CREATE (c:Candidate {
+              uid: randomUUID(),
+              name: $name,
+              location: $location,
+              created_at: datetime(),
+              updated_at: datetime()
+            })
             RETURN c.uid AS uid
             """
             rows = _run(q, {"name": name, "location": location})
