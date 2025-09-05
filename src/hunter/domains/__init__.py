@@ -1,2 +1,2 @@
-from domains.nodes import *
-from domains.relationships import *
+from hunter.domains.nodes import *
+from hunter.domains.relationships import *

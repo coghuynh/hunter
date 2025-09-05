@@ -1,16 +1,19 @@
 from typing import Optional, Dict, Any, List
 from hunter.db import run as _run
 from hunter.utils import _strip_or_none
+from hunter.domains.schema import SCHEMA
+from hunter.domains.types import NodeLabel, RelType
+from hunter.utils.cypher_builder import build_merge_node, build_link
 
 # ===== Generic repositories for dictionary-like nodes =====
 # Skill(name), Project(name), Language(name), JobTitle(title)
 
 class _DictRepo:
-    label: str = ""
+    label: NodeLabel  # concrete subclasses must set
     key_field: str = "name"  # default is `name`, override for JobTitle
 
     # Relationship type from Candidate -> this label. Override in subclasses.
-    rel_type: str = ""
+    rel_type: RelType
 
     @classmethod
     def upsert(cls, name: str, uid: Optional[str] = None) -> str:
@@ -18,29 +21,21 @@ class _DictRepo:
         if not name:
             raise ValueError("name must be non-empty")
 
+        props: Dict[str, Any]
+        merge_on: List[str]
         if uid:
-            q = (
-                f"""
-                MERGE (n:{cls.label} {{uid: $uid}})
-                ON CREATE SET n.{cls.key_field} = $name, n.created_at = datetime()
-                ON MATCH  SET n.{cls.key_field} = $name, n.updated_at = datetime()
-                RETURN n.uid AS uid
-                """
-            )
-            rows = _run(q, {"uid": uid, "name": name})
-            return rows[0][0]
+            props = {"uid": uid, cls.key_field: name}
+            merge_on = ["uid"]
         else:
             # Merge by the dictionary unique key (e.g., name/title)
-            q = (
-                f"""
-                MERGE (n:{cls.label} {{{cls.key_field}: $name}})
-                ON CREATE SET n.uid = randomUUID(), n.created_at = datetime()
-                ON MATCH  SET n.updated_at = datetime()
-                RETURN n.uid AS uid
-                """
-            )
-            rows = _run(q, {"name": name})
-            return rows[0][0]
+            props = {cls.key_field: name}
+            merge_on = [cls.key_field]
+
+        # Validate props using schema and use safe builder
+        SCHEMA.validate_node_props(cls.label, props)
+        q, params = build_merge_node(cls.label, props, merge_on=merge_on, return_alias="n", return_field="uid")
+        rows = _run(q, params)
+        return rows[0][0]
 
     @classmethod
     def get_by_uids(cls, uids: List[str]) -> List[Dict[str, Any]]:
@@ -48,7 +43,7 @@ class _DictRepo:
             return []
         q = (
             f"""
-            MATCH (n:{cls.label})
+            MATCH (n:{cls.label.value})
             WHERE n.uid IN $uids
             RETURN n.uid AS uid, n.{cls.key_field} AS name
             ORDER BY n.{cls.key_field}
@@ -64,7 +59,7 @@ class _DictRepo:
             return None
         q = (
             f"""
-            MATCH (n:{cls.label} {{{cls.key_field}: $name}})
+            MATCH (n:{cls.label.value} {{{cls.key_field}: $name}})
             RETURN n.uid AS uid, n.{cls.key_field} AS name
             LIMIT 1
             """
@@ -78,7 +73,7 @@ class _DictRepo:
     def get_list(cls, skip: int = 0, limit: int = 50) -> List[Dict[str, Any]]:
         q = (
             f"""
-            MATCH (n:{cls.label})
+            MATCH (n:{cls.label.value})
             RETURN n.uid AS uid, n.{cls.key_field} AS name
             ORDER BY n.{cls.key_field}
             SKIP $skip LIMIT $limit
@@ -91,7 +86,7 @@ class _DictRepo:
     def delete(cls, uid: str) -> int:
         q = (
             f"""
-            MATCH (n:{cls.label} {{uid:$uid}})
+            MATCH (n:{cls.label.value} {{uid:$uid}})
             DETACH DELETE n
             RETURN 1 AS deleted
             """
@@ -115,24 +110,28 @@ class _DictRepo:
             raise ValueError("candidate_uid and feature_uid must be non-empty")
 
         rel_props = rel_props or {}
-        # Safe to embed since rel_type and label are class-defined (whitelisted), not user input.
-        q = (
-            f"""
-            MATCH (c:Candidate {{uid: $candidate_uid}})
-            MATCH (n:{cls.label} {{uid: $feature_uid}})
-            MERGE (c)-[r:{cls.rel_type}]->(n)
-            ON CREATE SET r.eid = coalesce($eid, randomUUID()), r.created_at = datetime()
-            SET r += $rel_props,
-                r.updated_at = datetime()
-            RETURN r.eid AS eid
-            """
+        # Validate relationship shape before executing
+        SCHEMA.validate_relationship(
+            cls.rel_type,
+            NodeLabel.Candidate,
+            cls.label,
+            rel_props,
         )
-        rows = _run(q, {
-            "candidate_uid": candidate_uid,
-            "feature_uid": feature_uid,
-            "rel_props": rel_props,
-            "eid": rel_props.get("eid") if rel_props else None,
-        })
+        # Build safe link query
+        q, params = build_link(
+            start_label=NodeLabel.Candidate,
+            rel_type=cls.rel_type,
+            end_label=cls.label,
+            start_uid=candidate_uid,
+            end_uid=feature_uid,
+            rel_props=rel_props,
+            alias="r",
+            return_field="eid",
+        )
+        # ensure possible rel_eid param is present if user provided
+        if "rel_eid" not in params:
+            params["rel_eid"] = rel_props.get("eid") if rel_props else None
+        rows = _run(q, params)
         return rows[0][0]
 
     @classmethod
@@ -153,7 +152,7 @@ class _DictRepo:
             raise ValueError("rel_type must be defined on the concrete repo class")
         q = (
             f"""
-            MATCH (c:Candidate {{uid: $candidate_uid}})-[r:{cls.rel_type}]->(n:{cls.label} {{uid: $feature_uid}})
+            MATCH (c:Candidate {{uid: $candidate_uid}})-[r:{cls.rel_type.value}]->(n:{cls.label.value} {{uid: $feature_uid}})
             DELETE r
             RETURN 1 AS deleted
             """
@@ -168,7 +167,7 @@ class _DictRepo:
             raise ValueError("rel_type must be defined on the concrete repo class")
         q = (
             f"""
-            MATCH (c:Candidate {{uid: $candidate_uid}})-[r:{cls.rel_type}]->(n:{cls.label})
+            MATCH (c:Candidate {{uid: $candidate_uid}})-[r:{cls.rel_type.value}]->(n:{cls.label.value})
             RETURN n.uid AS uid, n.{cls.key_field} AS name, r.eid AS rel_eid, properties(r) AS rel_props
             ORDER BY n.{cls.key_field}
             SKIP $skip LIMIT $limit
@@ -191,7 +190,7 @@ class _DictRepo:
             raise ValueError("rel_type must be defined on the concrete repo class")
         q = (
             f"""
-            MATCH (c:Candidate {{uid: $candidate_uid}})-[r:{cls.rel_type}]->(:{cls.label})
+            MATCH (c:Candidate {{uid: $candidate_uid}})-[r:{cls.rel_type.value}]->(:{cls.label.value})
             WITH r
             DELETE r
             RETURN count(*) AS cnt
@@ -202,34 +201,34 @@ class _DictRepo:
 
 
 class SkillManagement(_DictRepo):
-    label = "Skill"
+    label = NodeLabel.Skill
     key_field = "name"
-    rel_type = "HAS_SKILL"
+    rel_type = RelType.HAS_SKILL
 
 
 class ProjectManagement(_DictRepo):
-    label = "Project"
+    label = NodeLabel.Project
     key_field = "name"
-    rel_type = "WORKED_ON"
+    rel_type = RelType.WORKED_ON
 
 
 class LanguageManagement(_DictRepo):
-    label = "Language"
+    label = NodeLabel.Language
     key_field = "name"
-    rel_type = "SPEAKS"
+    rel_type = RelType.SPEAKS
 
 
 class JobTitleManagement(_DictRepo):
-    label = "JobTitle"
+    label = NodeLabel.JobTitle
     key_field = "title"
-    rel_type = "HAS_TITLE"
+    rel_type = RelType.HAS_TITLE
     
 class MajorManagement(_DictRepo):
-    label = "Major"
+    label = NodeLabel.Major
     key_field = "name"
-    rel_type = "MAJORED_IN"
+    rel_type = RelType.MAJORED_IN
     
 class UniversityManagement(_DictRepo):
-    label = "University"
+    label = NodeLabel.University
     key_field = "name"
-    rel_type = "GRADUATED_FROM"
+    rel_type = RelType.GRADUATED_FROM

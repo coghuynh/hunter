@@ -1,58 +1,59 @@
-from neomodel import (
-    StructuredNode, StringProperty,
-    DateTimeProperty, UniqueIdProperty, RelationshipTo, RelationshipFrom
-)
-
-from hunter.domains.relationships import *
-
-class Candidate(StructuredNode):
-    uid = UniqueIdProperty()
-    name = StringProperty(index=True)
-    location = StringProperty(index=True, required=False)
-    created_at = DateTimeProperty(default_now=True)
-    updated_at = DateTimeProperty(default_now=True)
-
-    studied   = RelationshipFrom('Education', 'STUDIED', model=Studied)
-    job_titles= RelationshipFrom('JobTitle', 'WORK_AS', model=WorkAs)
-    languages = RelationshipFrom('Language', 'SPEAK', model=Speak)
-    skills    = RelationshipFrom('Skill', 'HAS_SKILL', model=HasSkill)
-    projects  = RelationshipFrom('Project', 'WORK_ON', model=WorkOn)
+from __future__ import annotations
+from pydantic import BaseModel, Field
+from typing import Optional
 
 
-class Major(StructuredNode):
-    uid = UniqueIdProperty()
-    name = StringProperty(unique_index=True)
-    
-    candidates = RelationshipTo(Candidate, "LEARN_ON", model=LearnOn)
-    
-class University(StructuredNode):
-    uid = UniqueIdProperty()
-    name = StringProperty(unique_index=True)
-    
-    cadidates = RelationshipTo(Candidate, "STUDIED", model=Studied)
+class Candidate(BaseModel):
+    uid: Optional[str] = None
+    name: str
+    location: Optional[str] = None
+    headline: Optional[str] = None
+    remote_ok: Optional[bool] = None
+    experience_years: Optional[float] = Field(default=None, ge=0)
+    salary_currency: Optional[str] = Field(default=None, min_length=3, max_length=3)
+    salary_min: Optional[float] = Field(default=None, ge=0)
+    salary_max: Optional[float] = Field(default=None, ge=0)
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
-class JobTitle(StructuredNode):
-    uid = UniqueIdProperty()
-    title = StringProperty(unique_index=True)
 
-    candidates = RelationshipTo(Candidate, 'WORK_AS', model=WorkAs)
+class Skill(BaseModel):
+    uid: Optional[str] = None
+    name: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
-class Language(StructuredNode):
-    uid = UniqueIdProperty()
-    name = StringProperty(unique_index=True)
 
-    candidates = RelationshipTo(Candidate, 'SPEAK', model=Speak)
+class JobTitle(BaseModel):
+    uid: Optional[str] = None
+    title: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
-class Skill(StructuredNode):
-    uid = UniqueIdProperty()
-    name = StringProperty(unique_index=True)
 
-    candidates = RelationshipTo(Candidate, 'HAS_SKILL', model=HasSkill)
+class University(BaseModel):
+    uid: Optional[str] = None
+    name: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
-class Project(StructuredNode):
-    uid = UniqueIdProperty()
-    name = StringProperty(index=True)
-    domain = StringProperty(required=False)
-    objective = StringProperty(required=False)
 
-    candidates = RelationshipTo(Candidate, 'WORK_ON', model=WorkOn)
+class Major(BaseModel):
+    uid: Optional[str] = None
+    name: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class Project(BaseModel):
+    uid: Optional[str] = None
+    name: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class Language(BaseModel):
+    uid: Optional[str] = None
+    name: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None

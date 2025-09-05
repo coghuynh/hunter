@@ -1,6 +1,8 @@
 from typing import Optional, Dict, Any, List
 from hunter.db import run as _run
 from hunter.utils import _strip_or_none
+from hunter.domains.schema import SCHEMA
+from hunter.domains.types import NodeLabel
 
 
 class CandidateRepository:
@@ -33,6 +35,8 @@ class CandidateRepository:
                           c.updated_at = datetime()
             RETURN c.uid AS uid
             """
+            # Validate properties against schema before executing Cypher.
+            SCHEMA.validate_node_props(NodeLabel.Candidate, {"uid": uid, "name": name, "location": location})
             rows = _run(q, {"uid": uid, "name": name, "location": location})
             return rows[0][0]
         else:
@@ -46,6 +50,7 @@ class CandidateRepository:
             })
             RETURN c.uid AS uid
             """
+            SCHEMA.validate_node_props(NodeLabel.Candidate, {"name": name, "location": location})
             rows = _run(q, {"name": name, "location": location})
             return rows[0][0]
 

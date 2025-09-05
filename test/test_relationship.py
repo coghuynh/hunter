@@ -122,11 +122,11 @@ def test_link_by_name_and_list_for_candidate_includes_rel_props():
     cand_uid = "cand-001"
     _mk_candidate(cand_uid)
 
-    since = datetime(2024, 1, 1).isoformat()
     rel_eid = SkillManagement.link_by_name(
         cand_uid,
         "Python",
-        rel_props={"weight": 0.9, "level": "expert", "since": since},
+        # Schema for HAS_SKILL allows level:int, years:float, weight:float
+        rel_props={"weight": 0.9, "level": 4, "years": 2.0},
     )
     assert isinstance(rel_eid, str) and len(rel_eid) > 0
 
@@ -138,8 +138,8 @@ def test_link_by_name_and_list_for_candidate_includes_rel_props():
     assert row["name"] == "Python"
     # rel props are flattened and prefixed with rel_
     assert row.get("rel_weight") == 0.9
-    assert row.get("rel_level") == "expert"
-    assert row.get("rel_since") == since
+    assert row.get("rel_level") == 4
+    assert float(row.get("rel_years")) == 2.0
 
 
 def test_link_by_uids_update_props_and_unlink_by_uids():
@@ -155,7 +155,7 @@ def test_link_by_uids_update_props_and_unlink_by_uids():
 
     # update same relationship props (r += rel_props should update)
     rel_eid_2 = SkillManagement.link_by_uids(
-        cand_uid, skill_uid, rel_props={"weight": 0.8, "note": "up"}
+        cand_uid, skill_uid, rel_props={"weight": 0.8, "years": 3.0}
     )
     assert rel_eid_2 == rel_eid_1
 
@@ -163,7 +163,7 @@ def test_link_by_uids_update_props_and_unlink_by_uids():
     assert len(rows) == 1
     row = rows[0]
     assert row.get("rel_weight") == 0.8
-    assert row.get("rel_note") == "up"
+    assert float(row.get("rel_years")) == 3.0
 
     # unlink
     deleted = SkillManagement.unlink_by_uids(cand_uid, skill_uid)
