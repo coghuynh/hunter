@@ -15,7 +15,7 @@ def main():
     if not isinstance(data, list):
         raise ValueError("Expected a list of resume objects in the JSON file")
 
-    n = min(10, len(data))
+    n = min(100, len(data))
     print(f"Ingesting {n} candidates from {DATA_PATH} ...")
 
     summaries = []

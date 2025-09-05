@@ -94,47 +94,47 @@ uid – Candidate UID (UUID string)
 ```
 
 
-## 3) Match Candidates (Top-K)
+## 3) Search Candidates (Filter Only)
 
-**Endpoint**
+Endpoint
 
-`GET /candidates/match`
+`POST /candidates/search`
 
-**Description**
+Description
 
-Return top-K candidates matching simple criteria.
+Filter candidates by required features without computing scores. Use this when you only need matching, not ranking.
 
-**Request Body**
-
-```json
-     {
-        "top_k": 10,
-        "must_have": {
-          "skills": [{"name":"python","min_level":"advanced","min_years":2}, ...],
-          "languages": [{"name":"english","min_level":"B2"}],
-          "job_titles_any": ["data engineer","ml engineer"],
-          "location_any": ["ho chi minh city", "remote"],
-          "remote_ok": true,
-          "salary_max": 2000
-        },
-        "nice_to_have": {
-          "skills": [{"name":"pandas","weight":1.0,"prefer_min_years":0,"prefer_level":"advanced"}],
-          "job_titles": ["ml engineer", "data scientist"],
-          "languages": ["english", "japanese"],
-          "location_preference": "ho chi minh city"
-        },
-        "weights": {...},
-        "explain": true,
-        "include_fields": ["id","name","headline","skills","location"]
-      }
-```
-
-**Response**
+Request Body
 
 ```json
 {
-    items: [
-        ... //Top-k candidates
-    ]
+  "must_have": {
+    "skills": [
+      {"name": "python", "min_level": "advanced", "min_years": 2}
+    ],
+    "languages": [
+      {"name": "english", "min_level": "B2"}
+    ],
+    "job_titles_any": ["data engineer", "ml engineer"],
+    "location_any": ["ho chi minh city", "remote"],
+    "remote_ok": true,
+    "salary_max": 2000
+  },
+  "include_fields": ["uid", "name", "location", "experience_years", "salary_max"],
+  "skip": 0,
+  "limit": 50
 }
+```
 
+Response
+
+```json
+{
+  "items": [
+    {"uid": "...", "name": "Alice", "location": "HCMC", "experience_years": 4, "salary_max": 1500},
+    {"uid": "...", "name": "Bob",   "location": "Remote", "experience_years": 3, "salary_max": 1200}
+  ],
+  "skip": 0,
+  "limit": 50
+}
+```

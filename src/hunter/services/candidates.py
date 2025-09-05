@@ -11,6 +11,7 @@ from hunter.repository.feature_repo import (
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from hunter.utils import _norm_str
+from hunter.db import run as _run
 
 # -----------------------------
 # Helpers
@@ -27,6 +28,17 @@ _MASTERY_TO_WEIGHT = {
     "less than 1 year": 0.3,
     "6 months": 0.3,
     "12 months": 0.6,
+}
+
+_MASTERY_TO_LEVEL_NUM = {
+    None: None,
+    "beginner": 1,
+    "intermediate": 2,
+    "advanced": 3,
+    "expert": 4,
+    # common variants map approximately
+    "basics": 1,
+    "basic": 1,
 }
 
 
@@ -115,6 +127,7 @@ def add_candidate_from_resume(resume: Dict[str, Any]) -> Dict[str, Any]:
             mastery = _norm_str(s.get("mastery"))
         rel_props = {
             "level": mastery,
+            "level_num": _MASTERY_TO_LEVEL_NUM.get(mastery) if mastery else None,
             "weight": _weight_from_mastery(mastery),
         }
         # Drop None props to keep the graph clean
@@ -198,3 +211,143 @@ def topk_candidates_matching(features : Dict[str, Any] = None) -> Dict[str, Any]
     pass
 
     
+
+# -----------------------------
+# Query by Features (filters)
+# -----------------------------
+
+_SKILL_LEVEL_MAP = {
+    "beginner": 1,
+    "intermediate": 2,
+    "advanced": 3,
+    "expert": 4,
+}
+
+_LANG_LEVEL_MAP = {
+    "A1": 1, "A2": 2, "B1": 3, "B2": 4, "C1": 5, "C2": 6, "native": 7
+}
+
+
+def _lc(x: Optional[str]) -> Optional[str]:
+    return x.lower().strip() if isinstance(x, str) and x.strip() else None
+
+
+def _map_level(mapper: Dict[str, int], val: Optional[str]) -> Optional[int]:
+    if not val:
+        return None
+    v = mapper.get(str(val).strip().lower())
+    return int(v) if v is not None else None
+
+
+def _project_fields(cprops: Dict[str, Any], fields: Optional[List[str]]) -> Dict[str, Any]:
+    if not fields:
+        return cprops
+    out: Dict[str, Any] = {}
+    for f in fields:
+        if f in cprops:
+            out[f] = cprops[f]
+    for possible in ("skills", "job_titles", "languages"):
+        if possible in fields and possible not in out:
+            out[possible] = None
+    return out
+
+
+def query_candidates(filters: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Filter candidates by provided features without scoring.
+
+    Request shape (all optional):
+      {
+        "must_have": {
+          "skills": [{"name": "python", "min_level": "advanced", "min_years": 2}],
+          "languages": [{"name": "english", "min_level": "B2"}],
+          "job_titles_any": ["data engineer", "ml engineer"],
+          "location_any": ["ho chi minh city", "remote"],
+          "remote_ok": true,
+          "salary_max": 2000
+        },
+        "include_fields": ["uid","name","location"],
+        "skip": 0,
+        "limit": 50
+      }
+
+    Returns:
+      { "items": [ candidate objects ... ], "skip": int, "limit": int }
+    """
+    filters = filters or {}
+    include_fields = filters.get("include_fields") or ["uid", "name", "location", "experience_years", "salary_max"]
+    must_have = filters.get("must_have") or {}
+    skip = int(filters.get("skip", 0))
+    limit = int(filters.get("limit", 50))
+
+    # ---- normalize must-have ----
+    mh_skills = []
+    for s in must_have.get("skills", []) or []:
+        if not isinstance(s, dict):
+            continue
+        mh_skills.append({
+            "name": _lc(s.get("name")),
+            "min_level_num": _map_level(_SKILL_LEVEL_MAP, s.get("min_level")),
+            "min_years": int(s.get("min_years")) if str(s.get("min_years")).isdigit() else 0,
+        })
+
+    mh_langs = []
+    for l in must_have.get("languages", []) or []:
+        if not isinstance(l, dict):
+            continue
+        mh_langs.append({
+            "name": _lc(l.get("name")),
+            "min_level_num": _map_level(_LANG_LEVEL_MAP, l.get("min_level")),
+        })
+
+    mh_titles_any = [_lc(t) for t in (must_have.get("job_titles_any") or [])]
+    mh_locations_any = [_lc(t) for t in (must_have.get("location_any") or [])]
+    mh_remote_ok = must_have.get("remote_ok")
+    mh_salary_max = must_have.get("salary_max")
+
+    params = {
+        "mustSkills": mh_skills,
+        "mustLangs": mh_langs,
+        "mustTitles": mh_titles_any,
+        "mustLocations": mh_locations_any,
+        "remoteOk": mh_remote_ok,
+        "salaryMax": mh_salary_max,
+        "skip": skip,
+        "limit": limit,
+    }
+
+    q = r"""
+    MATCH (c:Candidate)
+    WHERE ($remoteOk IS NULL OR c.remote_ok = $remoteOk)
+      AND ($salaryMax IS NULL OR coalesce(c.salary_max, c.salary_expectation.max) <= $salaryMax)
+      AND ( size($mustTitles) = 0 OR EXISTS {
+            MATCH (c)-[:HAS_TITLE]->(jt:JobTitle)
+            WHERE toLower(jt.title) IN $mustTitles
+          })
+      AND ( size($mustLocations) = 0 OR toLower(coalesce(c.location, "")) IN $mustLocations )
+      AND (
+            size($mustLangs) = 0 OR ALL(req IN $mustLangs WHERE EXISTS {
+                MATCH (c)-[sp:SPEAKS]->(lg:Language)
+                WHERE toLower(lg.name) = req.name
+                  AND coalesce(sp.level_num, 0) >= coalesce(req.min_level_num, 0)
+            })
+          )
+      AND (
+            size($mustSkills) = 0 OR ALL(ms IN $mustSkills WHERE EXISTS {
+                MATCH (c)-[hs:HAS_SKILL]->(sk:Skill)
+                WHERE toLower(sk.name) = ms.name
+                  AND coalesce(hs.level_num, 0) >= coalesce(ms.min_level_num, 0)
+                  AND coalesce(hs.years, 0) >= coalesce(ms.min_years, 0)
+            })
+          )
+    RETURN c{ .* } AS cprops
+    ORDER BY coalesce(c.experience_years,0) DESC, coalesce(c.salary_max,9e18) ASC, c.name
+    SKIP $skip LIMIT $limit
+    """
+
+    rows = _run(q, params)
+    items: List[Dict[str, Any]] = []
+    for r in rows:
+        c = r[0]
+        items.append(_project_fields(c, include_fields))
+    return {"items": items, "skip": skip, "limit": limit}

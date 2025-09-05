@@ -2,11 +2,10 @@ from __future__ import annotations
 from flask import Blueprint, request, jsonify
 
 from hunter.services.candidates import (
-    add_candidate_from_resume, get_candidate_full
+    add_candidate_from_resume, get_candidate_full, query_candidates
 )
 
 from hunter.utils.helpers import jsonify_safe
-from hunter.repository.match_repo import match_candidates
 
 bp = Blueprint("candidates", __name__)
 
@@ -39,14 +38,18 @@ def read_candidate_full(uid: str):
     return jsonify(jsonify_safe(data)), 200
 
 
-@bp.get("/candidates/match")
-def get_top_k():
+@bp.post("/candidates/search")
+def search_candidates():
+    """Filter candidates by features without scoring.
+    Body mirrors the must_have structure from /candidates/match with skip/limit and include_fields.
+    """
     payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Body must be a JSON object"}), 400
     try:
-        resp = match_candidates(payload=payload)
+        resp = query_candidates(payload)
     except ValueError as ve:
-        return jsonify({"error" : str(ve)}), 404
-    
+        return jsonify({"error": str(ve)}), 400
     return jsonify(resp), 200
     
     

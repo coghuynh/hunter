@@ -182,7 +182,9 @@ def default_schema() -> GraphSchema:
             end_label=NodeLabel.Skill,
             properties={
                 **rel_common(),
-                "level": PropertySpec("level", (int,), required=False),
+                # Accept either numeric or string mastery, and also allow numeric level_num
+                "level": PropertySpec("level", (int, str), required=False),
+                "level_num": PropertySpec("level_num", (int,), required=False),
                 "years": PropertySpec("years", (int, float), required=False),
                 "weight": PropertySpec("weight", (int, float), required=False),
             },
@@ -193,7 +195,24 @@ def default_schema() -> GraphSchema:
             rel_type=RelType.WORKED_ON,
             start_label=NodeLabel.Candidate,
             end_label=NodeLabel.Project,
-            properties={**rel_common(), "since": PropertySpec("since", (int, str), False), "until": PropertySpec("until", (int, str), False)},
+            properties={
+                **rel_common(),
+                # optional time bounds
+                "since": PropertySpec("since", (int, str), False),
+                "until": PropertySpec("until", (int, str), False),
+                # rich project metadata
+                "role": PropertySpec("role", (str,), False),
+                "description": PropertySpec("description", (str,), False),
+                "objective": PropertySpec("objective", (str,), False),
+                "contribution": PropertySpec("contribution", (str,), False),
+                "impact": PropertySpec("impact", (str,), False),
+                "duration": PropertySpec("duration", (str,), False),
+                "collaboration_type": PropertySpec("collaboration_type", (str,), False),
+                "scale": PropertySpec("scale", (str,), False),
+                # lists
+                "tech_stack": PropertySpec("tech_stack", (list,), False),
+                "skills_applied": PropertySpec("skills_applied", (list,), False),
+            },
         )
     )
     s.add_relationship(
@@ -201,7 +220,11 @@ def default_schema() -> GraphSchema:
             rel_type=RelType.SPEAKS,
             start_label=NodeLabel.Candidate,
             end_label=NodeLabel.Language,
-            properties={**rel_common(), "level": PropertySpec("level", (int,), False)},
+            properties={
+                **rel_common(),
+                "level": PropertySpec("level", (int, str), False),
+                "level_num": PropertySpec("level_num", (int,), False),
+            },
         )
     )
     s.add_relationship(
@@ -234,4 +257,3 @@ def default_schema() -> GraphSchema:
 
 # A module-level default registry for convenience
 SCHEMA = default_schema()
-
