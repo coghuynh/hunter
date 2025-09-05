@@ -22,7 +22,6 @@ It uses graph-based data modeling and smart search/ranking algorithms to simplif
 2. Set up `env.hunter`
 
    ```bash
-   docker build -t hunter:1.0 .
    docker-compose up -d
 ## License
 Licensed under the Apache License, Version 2.0 – see the [LICENSE](LICENSE) file for details.

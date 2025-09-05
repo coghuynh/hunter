@@ -9,7 +9,7 @@ services:
       - "7474:7474"   # HTTP
       - "7687:7687"   # Bolt
     env_file:
-      - .env.app      # chứa NEO4J_AUTH=neo4j/yourStrongPass  (hoặc NEO4J_AUTH=none)
+      - .env.app      # chứa NEO4J_AUTH=neo4j/yourStrongPass
     environment:
       - NEO4J_server_memory_pagecache_size=1G
     volumes:
