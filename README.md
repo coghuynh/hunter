@@ -11,7 +11,6 @@ It uses graph-based data modeling and smart search/ranking algorithms to simplif
 ## Features
 - Parse and store resumes into structured graph database.
 - Link candidates with skills, projects, degrees, and languages.
-- Query and rank top candidates for job requirements.
 - REST API for integration with external HR tools.
 - Easy extension with new features and ranking strategies.
 
